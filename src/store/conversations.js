@@ -1,5 +1,7 @@
 import Vue from 'vue'
 import uuidv4 from 'uuid/v4'
+import lf from 'localforage'
+import _ from 'lodash'
 
 const state = {
   all: {},
@@ -21,6 +23,11 @@ const mutations = {
       state.all[conversationId].messages.push(message)
       state.allMsgIds.push(message.id)
     }
+  },
+  CLEAR_DATA (state){
+    state.all = {},
+    state.allIds = [],
+    state.allMsgIds = []
   }
 }
 
@@ -43,11 +50,51 @@ const actions = {
       messages: []
     })
   },
-  async get ({ commit, rootState }) {
+  async createRoom ({ rootState,state }){
+    let convoRef = rootState.db.collection('conversations')
+
+    convoRef.add({
+      created: Date.now(),
+      users: ['mr_a', 'mr_c'],
+      messages: []
+    }).then(res => {
+      lf.getItem('rooms').then(value => {
+        //console.log(value)
+        const rooms = value
+        //console.log(rooms)
+        rooms.push({id: res.id})
+        //console.log(rooms)
+        lf.setItem('rooms', rooms)
+      })
+    })
+
+  },
+  async enterRoom ({ commit, rootState }) {
     let convoRef = rootState.db.collection('conversations')
     let convos = await convoRef.get()
 
     convos.forEach(conversation => commit('SET_CONVERSATION', { conversation }))
+  },
+  async get ({ commit, rootState }) {
+    commit('CLEAR_DATA')
+
+    let convoRef = rootState.db.collection('conversations')
+    let convos = await convoRef.get()
+
+    const rooms = lf.getItem('rooms').then(value => {
+      
+      //console.log(value)
+
+      convos.forEach(conversation => {
+
+        const result = _.find(value,{ 'id': conversation.id})
+
+        if (result !== undefined){
+          commit('SET_CONVERSATION', { conversation })
+        }
+      })
+    })  
+
   },
   sendMessage ({ commit, rootState }, { text, created, sender, conversationId }) {
     const convoRef = rootState.db.collection('conversations').doc(conversationId)
