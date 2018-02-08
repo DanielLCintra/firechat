@@ -1,11 +1,14 @@
 const state = {
   all: {},
-  currentUser: 'mr_b'
+  currentUser: ''
 }
 
 const mutations = {
   SET_USER (state, { user }) {
     state.all = {...state.all, [user.id]: user.data() }
+  },
+  SET_CURRENT_USER (state, {userId}){
+    state.currentUser = userId
   }
 }
 
@@ -33,8 +36,10 @@ const actions = {
     let users = await userRef.get()
 
     users.forEach(user => commit('SET_USER', { user }))
+  },
+  setCurrentUser ({commit, state},userId){
+    commit("SET_CURRENT_USER", userId)
   }
-
 }
 
 export default { 

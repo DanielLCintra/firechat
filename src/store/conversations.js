@@ -6,7 +6,8 @@ import _ from 'lodash'
 const state = {
   all: {},
   allIds: [],
-  allMsgIds: []
+  allMsgIds: [],
+  currentRoom: ''
 }
 
 const mutations = {
@@ -28,6 +29,9 @@ const mutations = {
     state.all = {},
     state.allIds = [],
     state.allMsgIds = []
+  },
+  SET_CURRENT_ROOM(state, roomId){
+    state.currentRoom = roomId
   }
 }
 
@@ -50,30 +54,65 @@ const actions = {
       messages: []
     })
   },
-  async createRoom ({ rootState,state }){
+  async createRoom ({ commit, rootState,state }){
     let convoRef = rootState.db.collection('conversations')
-
     convoRef.add({
       created: Date.now(),
-      users: ['mr_a', 'mr_c'],
+      users: [],
       messages: []
     }).then(res => {
+
       lf.getItem('rooms').then(value => {
-        //console.log(value)
+        
+        if(value === null){
+          lf.setItem('rooms', [])
+        }
+
         const rooms = value
-        //console.log(rooms)
         rooms.push({id: res.id})
-        //console.log(rooms)
         lf.setItem('rooms', rooms)
+        commit("SET_CURRENT_ROOM", res.id)
+        
       })
     })
 
   },
-  async enterRoom ({ commit, rootState }) {
-    let convoRef = rootState.db.collection('conversations')
-    let convos = await convoRef.get()
+  async enterRoom ({ commit, rootState,state }, obj) {
 
-    convos.forEach(conversation => commit('SET_CONVERSATION', { conversation }))
+    commit('CLEAR_DATA')
+
+    lf.getItem('rooms').then(value => {
+
+      const result = _.find(value,{ 'id': obj.roomId})
+
+      if (result === undefined) {
+        const rooms = []
+        rooms.push({id: obj.roomId})
+        lf.setItem('rooms', rooms)
+      } 
+
+    })
+    
+    let convoRef = rootState.db.collection('conversations').doc(obj.roomId);
+    
+    convoRef.update({
+      users: [obj.userId]
+    }
+
+    let allConvos = rootState.db.collection('conversations');
+
+    let convos = await allConvos.get()
+
+    const rooms = lf.getItem('rooms').then(value => {
+
+      convos.forEach(conversation => {
+        const result = _.find(value,{ 'id': conversation.id})
+
+        if (result !== undefined){
+          commit('SET_CONVERSATION', { conversation })
+        }
+      })
+    })  
   },
   async get ({ commit, rootState }) {
     commit('CLEAR_DATA')
@@ -82,11 +121,8 @@ const actions = {
     let convos = await convoRef.get()
 
     const rooms = lf.getItem('rooms').then(value => {
-      
-      //console.log(value)
 
       convos.forEach(conversation => {
-
         const result = _.find(value,{ 'id': conversation.id})
 
         if (result !== undefined){
@@ -104,6 +140,9 @@ const actions = {
     })
     .then(res => console.log('Message sent.'))
     .catch(err => console.log('Error', err))
+  },
+  setCurrentRoom ({commit, state},roomId){
+    commit("SET_CURRENT_ROOM", roomId)
   }
 }
 

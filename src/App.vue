@@ -8,6 +8,7 @@
 		name: 'app',
 		data () {
 			return {
+				userId: '',
 				roomId: ''
 			}
 		},
@@ -19,7 +20,13 @@
 			...mapState({
 		      conversations: state => state.conversations.all,
 		      convoIds: state => state.conversations.allIds
-		    })
+		    }),
+		    ...mapState('conversations', ['currentRoom'])
+	  	},
+	  	watch:{
+	  		currentRoom(value){
+	  			this.roomId = value
+	  		}
 	  	},
 	  	methods:{
 	  		get () {
@@ -28,21 +35,30 @@
 		    },
 		    createRoom () {
 		    	this.$store.dispatch('conversations/createRoom')
-		    	this.get()
+		    },
+		   	login (){
+		    	this.$store.dispatch('conversations/enterRoom', {roomId: this.roomId, userId: this.userId})
 		    }
 	  	},
 	  	mounted () {
-	  		lf.setItem('rooms', [])
-	  		this.get()
+	  		lf.getItem('rooms').then(value => {
+        
+	        	if(value === null){
+	          		lf.setItem('rooms', [])
+	        	}else{
+	        		this.$store.dispatch('conversations/get')
+	        	}
+	  		})
 	  	}
 	}
 </script>
 
 <template>
   <div>
-  	<input type="button" value="Create Room" @click="createRoom()"/>
+  	<input type="button" value="Create Room" @click="createRoom()"/><br/><br/>
   	<input type="text" placeholder="Room id" v-model="roomId"/>
-  	<input type="button" value="Enter Room" @click="enterRoom()"/>
+  	<input type="text" placeholder="User Id" v-model="userId"/><br/><br/>
+  	<input type="button" value="Login" @click="login()"/>
    	<ConversationContainer 
       v-for="id in convoIds"
       :conversation="conversations[id]"
